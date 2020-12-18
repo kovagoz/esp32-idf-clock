@@ -1,0 +1,4 @@
+cmake_minimum_required(VERSION 3.5)
+
+include(/Users/y9ckn1/Development/esp-idf/tools/cmake/project.cmake)
+project(idf_clock)
