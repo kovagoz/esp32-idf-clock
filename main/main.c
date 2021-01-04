@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
+#include "freertos/FreeRTOSConfig.h"
 #include "freertos/portmacro.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "driver/gpio.h"
-#include "freertos/FreeRTOSConfig.h"
 #include "sdkconfig.h"
 #include "tm1637.h"
 
@@ -23,14 +23,13 @@ SemaphoreHandle_t xSemaphore = NULL;
 static void update_display(void *arg)
 {
 	for (;;) {
-		tm1637_set_number(led, counter);
+		tm1637_set_number(led, counter++);
 		xSemaphoreTake(xSemaphore, portMAX_DELAY);
 	}
 }
 
 static void IRAM_ATTR button_isr_handler(void *arg)
 {
-	counter++;
 	xSemaphoreGiveFromISR(xSemaphore, pdFALSE);
 }
 
