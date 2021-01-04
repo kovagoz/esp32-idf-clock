@@ -1,0 +1,3 @@
+[submodule "components/esp-32-tm1637"]
+	path = components/esp-32-tm1637
+	url = https://github.com/petrows/esp-32-tm1637.git
