@@ -1,7 +1,13 @@
-menu "TM1637 Configuration"
+menu "Clock Configuration"
 
-config TM1637_CLK_PIN
-    int "TM1637 lcd CLK pin GPIO number"
+config CLOCK_WIFI_SSID
+	string "WiFi SSID"
+
+config CLOCK_WIFI_PASSWORD
+	string "WiFi password"
+
+config CLOCK_DISPLAY_CLK_PIN
+    int "LED display CLK pin GPIO number"
     range 0 34
     default 18
     help
@@ -13,8 +19,8 @@ config TM1637_CLK_PIN
 
         For ESP8266, GPIO 5 is a good choice.
 
-config TM1637_DIO_PIN
-    int "TM1637 lcd DIO pin GPIO number"
+config CLOCK_DISPLAY_DIO_PIN
+    int "LED display DIO pin GPIO number"
     range 0 34
     default 19
     help
@@ -25,5 +31,10 @@ config TM1637_DIO_PIN
         GPIOs 35-39 are input-only so cannot be used to drive the One Wire Bus.
 
         For ESP8266, GPIO 4 is a good choice.
+
+config CLOCK_DISPLAY_BRIGHTNESS
+	int "Set display brightness level"
+	range 0 7
+	default 1
 
 endmenu
