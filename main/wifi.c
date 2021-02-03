@@ -105,7 +105,7 @@ esp_err_t wifi_connect()
 	EventBits_t status = xEventGroupWaitBits(
 		wifi_event_group,
 		WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
-		pdFALSE, // xClearOnExit
+		pdTRUE, // xClearOnExit
 		pdFALSE, // Wait until any of the event bits get set
 		portMAX_DELAY // xTicksToWait
 	);

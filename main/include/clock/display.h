@@ -1,13 +1,23 @@
 #ifndef CLOCK_DISPLAY_H
 #define CLOCK_DISPLAY_H
 
-#define DISPLAY_MSG_BOOT 0x7c,0x5c,0x5c,0x78
-#define DISPLAY_MSG_SYNC 0x6d,0x66,0x54,0x39
-#define DISPLAY_MSG_FAIL 0x71,0x77,0x06,0x38
-#define DISPLAY_MSG_FINE 0x71,0x06,0x54,0x79
+// Write data to the active buffer and display it immediately.
+#define DISPLAY_FLASH(msg) {               \
+		buffer_t __data = { msg };         \
+		display_flash(__data);             \
+	}
 
-void display_init();
-void display_write(uint8_t s0, uint8_t s1, uint8_t s2, uint8_t s3);
-void display_write_time(int hours, int minutes);
+typedef uint8_t buffer_t[4];
+
+#include <esp_err.h>
+
+esp_err_t display_init(uint8_t buffer_count);
+esp_err_t display_write(uint8_t buf_id, buffer_t data);
+esp_err_t display_write_time(uint8_t id, uint8_t hour, uint8_t minute);
+esp_err_t display_select(uint8_t buf_id);
+
+// Helper functions
+void display_flash(buffer_t data);
+uint8_t display_select_next();
 
 #endif
