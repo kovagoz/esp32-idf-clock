@@ -37,4 +37,7 @@ config CLOCK_DISPLAY_BRIGHTNESS
 	range 0 7
 	default 1
 
+config CLOCK_BUTTON_PIN
+	int "Set button GPIO pin"
+
 endmenu

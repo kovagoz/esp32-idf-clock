@@ -3,6 +3,7 @@
 #include <string.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
+#include <freertos/portmacro.h>
 #include <freertos/projdefs.h>
 #include <freertos/task.h>
 #include <esp_log.h>
@@ -11,6 +12,11 @@
 #include <tm1637.h>
 
 #include "clock/display.h"
+
+#define VALIDATE_BUFFER_ID(x) if (x >= bufcount) {     \
+		ESP_LOGE(TAG, "Invalid buffer ID");            \
+		return ESP_FAIL;                               \
+	}
 
 static const int8_t symbols[] = {
 	0x3f, // 0b00111111,    // 0
@@ -26,7 +32,7 @@ static const int8_t symbols[] = {
 };
 
 // Log tag
-static const char* TAG = "display";
+static const char *TAG = "display";
 
 static tm1637_led_t *display;
 
@@ -38,21 +44,13 @@ static EventGroupHandle_t display_events;
 
 esp_err_t display_write(uint8_t buf_id, buffer_t data)
 {
-	if (buf_id >= bufcount) {
-		ESP_LOGE(TAG, "Invalid buffer ID");
-		return ESP_FAIL;
-	}
+	VALIDATE_BUFFER_ID(buf_id);
 
 	memcpy(buffers[buf_id], data, sizeof(buffer_t));
 
-	xEventGroupSetBits(display_events, (1 << buf_id));
+	xEventGroupSetBits(display_events, 1 << buf_id);
 
 	return ESP_OK;
-}
-
-void display_flash(buffer_t data)
-{
-	display_write(active_buffer, data);
 }
 
 esp_err_t display_write_time(uint8_t buf_id, uint8_t hour, uint8_t minute)
@@ -68,47 +66,71 @@ esp_err_t display_write_time(uint8_t buf_id, uint8_t hour, uint8_t minute)
 	return display_write(buf_id, data);
 }
 
+esp_err_t display_write_celsius(uint8_t buf_id, float temperature)
+{
+	buffer_t data;
+	data[0] = symbols[2];
+	data[1] = symbols[1];
+	data[2] = 0b01100011; // degree sign
+	data[3] = symbols[3];
+
+	return display_write(buf_id, data);
+}
+
 esp_err_t display_select(uint8_t buf_id)
 {
-	if (buf_id >= bufcount) {
-		ESP_LOGE(TAG, "Invalid buffer ID");
-		return ESP_FAIL;
-	}
+	VALIDATE_BUFFER_ID(buf_id);
 
-	active_buffer = buf_id;
+	// Do not refresh the display unnecessarily
+	if (buf_id != active_buffer) {
+		active_buffer = buf_id;
+		xEventGroupSetBits(display_events, 1 << buf_id);
+	}
 
 	return ESP_OK;
 }
 
-uint8_t display_select_next()
+void display_select_next()
 {
-	if (active_buffer == bufcount - 1) {
-		active_buffer = 0;
-	} else {
-		active_buffer++;
+	uint8_t nextbuf = active_buffer + 1;
+
+	if (nextbuf == bufcount) {
+		nextbuf = 0;
 	}
 
-	return active_buffer;
+	display_select(nextbuf);
 }
 
 static void display_update_task(void *pvParameters)
 {
 	for (;;) {
-		xEventGroupWaitBits(
+		EventBits_t bits = xEventGroupWaitBits(
 			display_events,
-			1 << active_buffer,
+			255, // FIXME set it to it's highest possible value
 			pdTRUE, // xClearOnExit
 			pdFALSE, // xWaitForAllBits
-			portMAX_DELAY // xTicksToWait
+			portMAX_DELAY
 		);
 
-		tm1637_set_segment_raw(display, 0, buffers[active_buffer][0]);
-		tm1637_set_segment_raw(display, 1, buffers[active_buffer][1]);
-		tm1637_set_segment_raw(display, 2, buffers[active_buffer][2]);
-		tm1637_set_segment_raw(display, 3, buffers[active_buffer][3]);
+		// Make a copy of the ID of active buffer so it can't be changed
+		// during refreshing the display.
+		uint8_t buf_id = active_buffer;
+
+		if (bits & (1 << buf_id)) {
+			ESP_LOGI(TAG, "Updating display");
+			tm1637_set_segment_raw(display, 0, buffers[buf_id][0]);
+			tm1637_set_segment_raw(display, 1, buffers[buf_id][1]);
+			tm1637_set_segment_raw(display, 2, buffers[buf_id][2]);
+			tm1637_set_segment_raw(display, 3, buffers[buf_id][3]);
+		}
 	}
 }
 
+/**
+ * @param buffer_count Number of display buffers to allocate. Each buffer
+ * acts as a virtual display and you can switch between them by display_select()
+ * and display_select_next() functions.
+ */
 esp_err_t display_init(uint8_t buffer_count)
 {
 	if (buffer_count < 1) {
@@ -116,11 +138,11 @@ esp_err_t display_init(uint8_t buffer_count)
 		return ESP_FAIL;
 	}
 
+	// Initialize the LED display hardware.
 	display = tm1637_init(CONFIG_CLOCK_DISPLAY_CLK_PIN, CONFIG_CLOCK_DISPLAY_DIO_PIN);
 	tm1637_set_brightness(display, CONFIG_CLOCK_DISPLAY_BRIGHTNESS);
 
-	display_events = xEventGroupCreate();
-
+	// Allocate memory for display buffers.
 	buffers = calloc(buffer_count, sizeof(buffer_t));
 
 	if (buffers == NULL) {
@@ -130,6 +152,10 @@ esp_err_t display_init(uint8_t buffer_count)
 
 	bufcount = buffer_count;
 
+	// Tasks can request display refresh throw this event group.
+	display_events = xEventGroupCreate();
+
+	// Start the display updater task which listens the event group above.
 	xTaskCreate(display_update_task, "", 2048, NULL, 10, NULL);
 
 	return ESP_OK;
