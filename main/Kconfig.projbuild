@@ -33,11 +33,14 @@ config CLOCK_DISPLAY_DIO_PIN
         For ESP8266, GPIO 4 is a good choice.
 
 config CLOCK_DISPLAY_BRIGHTNESS
-	int "Set display brightness level"
+	int "Display brightness level"
 	range 0 7
 	default 1
 
 config CLOCK_BUTTON_PIN
-	int "Set button GPIO pin"
+	int "Button GPIO pin"
+
+config CLOCK_DHT_PIN
+	int "DHT22 data pin"
 
 endmenu

@@ -1,3 +1,6 @@
 [submodule "components/esp-32-tm1637"]
 	path = components/esp-32-tm1637
 	url = https://github.com/petrows/esp-32-tm1637.git
+[submodule "components/esp-idf-lib"]
+	path = components/esp-idf-lib
+	url = https://github.com/UncleRus/esp-idf-lib.git

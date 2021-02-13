@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
 
+set(EXTRA_COMPONENT_DIRS /Users/y9ckn1/Development/esp/idf_clock/components/esp-idf-lib/components)
 include(/Users/y9ckn1/Development/esp-idf/tools/cmake/project.cmake)
 project(idf_clock)

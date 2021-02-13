@@ -68,11 +68,34 @@ esp_err_t display_write_time(uint8_t buf_id, uint8_t hour, uint8_t minute)
 
 esp_err_t display_write_celsius(uint8_t buf_id, float temperature)
 {
+	// Convert to decicelsius :)
+	uint16_t dc = (int) (temperature * 10);
+
 	buffer_t data;
-	data[0] = symbols[2];
-	data[1] = symbols[1];
+	data[0] = symbols[dc / 100];
+	data[1] = symbols[dc % 100 / 10];
 	data[2] = 0b01100011; // degree sign
-	data[3] = symbols[3];
+	data[3] = symbols[dc % 10];
+
+	return display_write(buf_id, data);
+}
+
+esp_err_t display_write_percent(uint8_t buf_id, uint8_t percent)
+{
+	buffer_t data;
+
+	if (percent > 99) {
+		// Write "HI" for high
+		data[0] = 0b01110110;
+		data[1] = symbols[1];
+	} else {
+		data[0] = symbols[percent / 10];
+		data[1] = symbols[percent % 10];
+	}
+
+	// Display the % sign (kind of)
+	data[2] = 0b01100011; // upper "o"
+	data[3] = 0b01011100; // lower "o"
 
 	return display_write(buf_id, data);
 }

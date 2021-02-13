@@ -8,6 +8,7 @@
 #include <esp_log.h>
 
 #include "clock/button.h"
+#include "clock/dht.h"
 #include "clock/display.h"
 #include "clock/ntp.h"
 #include "clock/timer.h"
@@ -26,10 +27,11 @@
 		display_select(0);                   \
 	}
 
-#define WITH_TWO_BUFFERS 2
+#define WITH_THREE_BUFFERS 3
 
 #define DISPLAY_BUFFER_CLOCK 0
 #define DISPLAY_BUFFER_TEMP 1
+#define DISPLAY_BUFFER_HUMIDITY 2
 
 #define SECOND 1000000
 #define TEN_SECONDS 10000000
@@ -51,7 +53,15 @@ static void update_time()
 
 static void update_temperature()
 {
-	display_write_celsius(DISPLAY_BUFFER_TEMP, 21.3);
+	float temperature = 0;
+    float humidity    = 0;
+
+	if (dht_read(&humidity, &temperature) == ESP_OK) {
+		display_write_celsius(DISPLAY_BUFFER_TEMP, temperature);
+		display_write_percent(DISPLAY_BUFFER_HUMIDITY, humidity);
+	} else {
+		ESP_LOGE(TAG, "Could not read data from DHT22");
+	}
 }
 
 static void IRAM_ATTR button_handler(void *arg)
@@ -78,7 +88,7 @@ void app_main()
 	timezone_set(CLOCK_TZ_EUROPE_BUDAPEST);
 
 	ESP_LOGI(TAG, "Initialize display");
-	ESP_ERROR_CHECK(display_init(WITH_TWO_BUFFERS));
+	ESP_ERROR_CHECK(display_init(WITH_THREE_BUFFERS));
 
 	DISPLAY_FLASH(MSG_BOOT);
 
@@ -102,6 +112,7 @@ void app_main()
 		ESP_LOGI(TAG, "Initialize button");
 		ESP_ERROR_CHECK(button_init(BUTTON_PIN, &button_handler));
 	} else {
+		ESP_LOGE(TAG, "WiFi connection failed");
 		DISPLAY_FLASH(MSG_FAIL);
 	}
 }
