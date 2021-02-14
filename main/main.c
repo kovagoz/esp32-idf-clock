@@ -47,7 +47,6 @@ static void update_time()
 	time_t systime = time(NULL);
 	struct tm *now = localtime(&systime);
 
-	// TODO write time only if it changed
 	display_write_time(DISPLAY_BUFFER_CLOCK, now->tm_hour, now->tm_min);
 }
 

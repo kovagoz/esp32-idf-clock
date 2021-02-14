@@ -46,9 +46,11 @@ esp_err_t display_write(uint8_t buf_id, buffer_t data)
 {
 	VALIDATE_BUFFER_ID(buf_id);
 
-	memcpy(buffers[buf_id], data, sizeof(buffer_t));
-
-	xEventGroupSetBits(display_events, 1 << buf_id);
+	// Notify the update task only if buffer has really changed
+	if (memcmp(buffers[buf_id], data, sizeof(buffer_t)) != 0) {
+		memcpy(buffers[buf_id], data, sizeof(buffer_t));
+		xEventGroupSetBits(display_events, 1 << buf_id);
+	}
 
 	return ESP_OK;
 }
