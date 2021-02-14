@@ -11,7 +11,6 @@
 #include "clock/dht.h"
 #include "clock/display.h"
 #include "clock/ntp.h"
-#include "clock/timer.h"
 #include "clock/wifi.h"
 
 // Short messages for 7-segment display
@@ -33,42 +32,44 @@
 #define DISPLAY_BUFFER_TEMP 1
 #define DISPLAY_BUFFER_HUMIDITY 2
 
-#define SECOND 1000000
-#define TEN_SECONDS 10000000
-
 #define BUTTON_PIN CONFIG_CLOCK_BUTTON_PIN
+
+#define ONE_SECOND 1000 / portTICK_PERIOD_MS
+#define TEN_SECONDS 10000 / portTICK_PERIOD_MS
 
 static const char *TAG = "clock";
 
-TaskHandle_t task = NULL;
+TaskHandle_t task_display = NULL;
 
-static void update_time()
+static void update_time_task()
 {
-	time_t systime = time(NULL);
+	time_t systime;
 	struct tm *now = localtime(&systime);
 
-	display_write_time(DISPLAY_BUFFER_CLOCK, now->tm_hour, now->tm_min);
+	for (;;) {
+		systime = time(NULL);
+		now = localtime(&systime);
+
+		display_write_time(DISPLAY_BUFFER_CLOCK, now->tm_hour, now->tm_min);
+
+		vTaskDelay(ONE_SECOND);
+	}
 }
 
-static void update_temperature()
+static void update_temperature_task()
 {
 	float temperature = 0;
     float humidity    = 0;
 
-	if (dht_read(&humidity, &temperature) == ESP_OK) {
-		display_write_celsius(DISPLAY_BUFFER_TEMP, temperature);
-		display_write_percent(DISPLAY_BUFFER_HUMIDITY, humidity);
-	} else {
-		ESP_LOGE(TAG, "Could not read data from DHT22");
-	}
-}
+	for (;;) {
+		if (dht_read(&humidity, &temperature) == ESP_OK) {
+			display_write_celsius(DISPLAY_BUFFER_TEMP, temperature);
+			display_write_percent(DISPLAY_BUFFER_HUMIDITY, humidity);
+		} else {
+			ESP_LOGE(TAG, "Could not read data from DHT22");
+		}
 
-static void IRAM_ATTR button_handler(void *arg)
-{
-	uint8_t pin = (uint8_t) arg;
-
-	if (pin == BUTTON_PIN) {
-		vTaskNotifyGiveFromISR(task, NULL);
+		vTaskDelay(TEN_SECONDS);
 	}
 }
 
@@ -78,6 +79,15 @@ static void switch_display_task(void *pvParameters)
 		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 		ESP_LOGI(TAG, "Buffer switch request received");
 		display_select_next();
+	}
+}
+
+static void IRAM_ATTR button_handler(void *arg)
+{
+	uint8_t pin = (uint8_t) arg;
+
+	if (pin == BUTTON_PIN) {
+		vTaskNotifyGiveFromISR(task_display, NULL);
 	}
 }
 
@@ -99,14 +109,10 @@ void app_main()
 		ntp_start();
 		ntp_wait_for_sync();
 
-		ESP_LOGI(TAG, "Starting timers");
-		call_every(SECOND, &update_time);
-		call_every(TEN_SECONDS, &update_temperature);
-
-		ESP_LOGI(TAG, "Start display switcher task");
-		xTaskCreate(switch_display_task, "", 2048, NULL, 10, &task);
-
-		configASSERT(task);
+		ESP_LOGI(TAG, "Starting tasks");
+		xTaskCreate(update_time_task, "", 2048, NULL, 10, NULL);
+		xTaskCreate(update_temperature_task, "", 2048, NULL, 10, NULL);
+		xTaskCreate(switch_display_task, "", 2048, NULL, 10, &task_display);
 
 		ESP_LOGI(TAG, "Initialize button");
 		ESP_ERROR_CHECK(button_init(BUTTON_PIN, &button_handler));
