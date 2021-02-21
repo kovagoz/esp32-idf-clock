@@ -1,10 +1,16 @@
 menu "Clock Configuration"
 
+menu "WiFi settings"
+
 config CLOCK_WIFI_SSID
 	string "WiFi SSID"
 
 config CLOCK_WIFI_PASSWORD
 	string "WiFi password"
+
+endmenu
+
+menu "7-segment LED display"
 
 config CLOCK_DISPLAY_CLK_PIN
     int "LED display CLK pin GPIO number"
@@ -37,10 +43,35 @@ config CLOCK_DISPLAY_BRIGHTNESS
 	range 0 7
 	default 1
 
+endmenu
+
 config CLOCK_BUTTON_PIN
 	int "Button GPIO pin"
+    range 0 34
 
 config CLOCK_DHT_PIN
-	int "DHT22 data pin"
+	int "Temperature sensor data pin"
+    range 0 34
+
+menu "Laser PM2.5 Sensor"
+
+config CLOCK_SDS011_UART
+	int "UART you want to use for communication"
+    range 0 2
+
+config CLOCK_SDS011_TX_PIN
+	int "UART TX pin number"
+    range 0 34
+
+config CLOCK_SDS011_RX_PIN
+	int "UART RX pin number"
+    range 0 34
+
+config CLOCK_SDS011_RUN_INTERVAL
+	int "Time in seconds to let the SDS011 run before taking the measurment"
+	range 5 15
+	default 5
+
+endmenu
 
 endmenu

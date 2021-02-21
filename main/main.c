@@ -11,6 +11,7 @@
 #include "clock/dht.h"
 #include "clock/display.h"
 #include "clock/ntp.h"
+#include "clock/sds011.h"
 #include "clock/wifi.h"
 
 // Short messages for 7-segment display
@@ -26,16 +27,18 @@
 		display_select(0);                   \
 	}
 
-#define WITH_THREE_BUFFERS 3
+#define WITH_FOUR_BUFFERS 4
 
 #define DISPLAY_BUFFER_CLOCK 0
 #define DISPLAY_BUFFER_TEMP 1
 #define DISPLAY_BUFFER_HUMIDITY 2
+#define DISPLAY_BUFFER_PM 3
 
 #define BUTTON_PIN CONFIG_CLOCK_BUTTON_PIN
 
 #define ONE_SECOND 1000 / portTICK_PERIOD_MS
 #define TEN_SECONDS 10000 / portTICK_PERIOD_MS
+#define ONE_MINUTE 60000 / portTICK_PERIOD_MS
 
 static const char *TAG = "clock";
 
@@ -73,6 +76,20 @@ static void update_temperature_task()
 	}
 }
 
+static void update_pm10_task()
+{
+	float pm25;
+	float pm10;
+
+	sds011_init();
+
+	for (;;) {
+		sds011_read(&pm25, &pm10);
+		display_write_pm(DISPLAY_BUFFER_PM, (int) pm10);
+		vTaskDelay(ONE_MINUTE);
+	}
+}
+
 static void switch_display_task(void *pvParameters)
 {
 	for (;;) {
@@ -97,7 +114,7 @@ void app_main()
 	timezone_set(CLOCK_TZ_EUROPE_BUDAPEST);
 
 	ESP_LOGI(TAG, "Initialize display");
-	ESP_ERROR_CHECK(display_init(WITH_THREE_BUFFERS));
+	ESP_ERROR_CHECK(display_init(WITH_FOUR_BUFFERS));
 
 	DISPLAY_FLASH(MSG_BOOT);
 
@@ -112,6 +129,7 @@ void app_main()
 		ESP_LOGI(TAG, "Starting tasks");
 		xTaskCreate(update_time_task, "", 2048, NULL, 10, NULL);
 		xTaskCreate(update_temperature_task, "", 2048, NULL, 10, NULL);
+		xTaskCreate(update_pm10_task, "", 2048, NULL, 10, NULL);
 		xTaskCreate(switch_display_task, "", 2048, NULL, 10, &task_display);
 
 		ESP_LOGI(TAG, "Initialize button");

@@ -4,3 +4,7 @@
 [submodule "components/esp-idf-lib"]
 	path = components/esp-idf-lib
 	url = https://github.com/UncleRus/esp-idf-lib.git
+[submodule "components/sds011-esp-raw"]
+	path = components/sds011-esp-raw
+	url = git@github.com:kovagoz/sds011-esp-raw.git
+	branch = fix-macro-definitions

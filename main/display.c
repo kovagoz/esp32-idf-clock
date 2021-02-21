@@ -18,6 +18,12 @@
 		return ESP_FAIL;                               \
 	}
 
+#define LETTER_H 0b01110110
+#define LETTER_I symbols[1]
+#define LETTER_GREEK_MU 0b01110010
+
+#define EMPTY_SEGMENT 0b00000000;
+
 static const int8_t symbols[] = {
 	0x3f, // 0b00111111,    // 0
 	0x06, // 0b00000110,    // 1
@@ -88,8 +94,8 @@ esp_err_t display_write_percent(uint8_t buf_id, uint8_t percent)
 
 	if (percent > 99) {
 		// Write "HI" for high
-		data[0] = 0b01110110;
-		data[1] = symbols[1];
+		data[0] = LETTER_H;
+		data[1] = LETTER_I;
 	} else {
 		data[0] = symbols[percent / 10];
 		data[1] = symbols[percent % 10];
@@ -98,6 +104,25 @@ esp_err_t display_write_percent(uint8_t buf_id, uint8_t percent)
 	// Display the % sign (kind of)
 	data[2] = 0b01100011; // upper "o"
 	data[3] = 0b01011100; // lower "o"
+
+	return display_write(buf_id, data);
+}
+
+esp_err_t display_write_pm(uint8_t buf_id, uint8_t value)
+{
+	buffer_t data;
+
+	if (value > 99) {
+		// Write "HI" for high values
+		data[0] = LETTER_H;
+		data[1] = LETTER_I;
+	} else {
+		data[0] = symbols[value / 10];
+		data[1] = symbols[value % 10];
+	}
+
+	data[2] = EMPTY_SEGMENT;
+	data[3] = LETTER_GREEK_MU;
 
 	return display_write(buf_id, data);
 }
